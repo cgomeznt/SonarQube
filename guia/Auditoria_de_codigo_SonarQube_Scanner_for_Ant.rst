@@ -109,7 +109,7 @@ Descargamos el "SonarQube Scanner for Ant 2.5"::
 Configurar "SonarQube Scanner for Ant 2.5" 
 ++++++++++++++++++++++++++++++++++++++++++
 
-Ingresamos a la carpeta de trabajos de "SonarQube Scanner"
+Ingresamos a la carpeta de trabajos de "SonarQube Scanner"::
 
 	$ cd sonar-scanner-3.2.0.1227-linux/
 

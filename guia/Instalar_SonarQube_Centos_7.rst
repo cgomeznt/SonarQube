@@ -102,7 +102,7 @@ Nos salimos del SHELL de psql y del usuario nuevo.::
 Descargar e Instalar SonarQube
 ++++++++++++++++++++++++++++++
 
-Descargamos el ultimo SonarQube LTS. Podemos ver siempre la ultima versión desde https://www.sonarqube.org/downloads/
+Descargamos el ultimo SonarQube LTS. Podemos ver siempre la ultima versión desde https://www.sonarqube.org/downloads/ .::
 
 	$ wget https://sonarsource.bintray.com/Distribution/sonarqube/sonarqube-6.7.4.zip
 

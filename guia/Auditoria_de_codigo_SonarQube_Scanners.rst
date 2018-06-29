@@ -37,7 +37,7 @@ Descomprimimos el "SonarQube Scanner 3.2"::
 Configurar "SonarQube Scanner 3.2" 
 +++++++++++++++++++++++++++++++++++
 
-Ingresamos a la carpeta de trabajos de "SonarQube Scanner"
+Ingresamos a la carpeta de trabajos de "SonarQube Scanner"::
 
 	$ cd sonar-scanner-3.2.0.1227-linux/
 
