@@ -105,57 +105,170 @@ Descargamos el "SonarQube Scanner for Ant 2.5"::
 
 	$ wget https://sonarsource.bintray.com/Distribution/sonarqube-ant-task/sonarqube-ant-task-2.5.jar
 
+Copiamos el "SonarQube Scanner for Ant 2.5" 
++++++++++++++++++++++++++++++++++++++++++++
+
+Copiamos el "SonarQube Scanner for Ant 2.5" en un directorio donde luego lo podamos llamar desde el "build.xml"
+
 
 Configurar "SonarQube Scanner for Ant 2.5" 
 ++++++++++++++++++++++++++++++++++++++++++
 
-Ingresamos a la carpeta de trabajos de "SonarQube Scanner"::
+Ingresamos al carpeta de nuestro proyecto, editamos el "build.xml" y agregamos las siguientes lineas como nos lo indica la pagina oficial https://docs.sonarqube.org/display/SCAN/Analyzing+with+SonarQube+Scanner+for+Ant
 
-	$ cd sonar-scanner-3.2.0.1227-linux/
+::
 
-Modificamos el archivo de configuración para que utilice el "SonarQube 6.4.0".::
+	$ vi build.xml
 
-	$ vi conf/sonar-scanner.properties
+	<project name="My Project" default="all" basedir="." xmlns:sonar="antlib:org.sonar.ant">
+	  <target name="all" depends="build,pack" />
 
-	Buscamos esta linea
-
-	#----- Default SonarQube server
-	#sonar.host.url=http://localhost:9000
-
-	Y la descomentamos para dejarla así
-
-	#----- Default SonarQube server
-	sonar.host.url=http://localhost:9000
-
-Ingresamos en el directorio "bin" para crear el archivo de propiedades. Debemos crear un archivo llamado "sonar-project.properties" y con un contenido que podemos obtener de este link https://docs.sonarqube.org/display/SCAN/Analyzing+with+SonarQube+Scanner.::
-
-	$ cd bin/
-
-	$ vi sonar-project.properties
-	# must be unique in a given SonarQube instance
-	sonar.projectKey=my:project
-	# this is the name and version displayed in the SonarQube UI. Was mandatory prior to SonarQube 6.1.
-	sonar.projectName=My project
-	sonar.projectVersion=1.0
+	<!-- Define the SonarQube global properties (the most usual way is to pass these properties via the command line) -->
+	<property name="sonar.host.url" value="http://localhost:9000" />
 	 
-	# Path is relative to the sonar-project.properties file. Replace "\" by "/" on Windows.
-	# This property is optional if sonar.modules is set. 
-	sonar.sources=./codigo
+	  
+	<!-- Define the SonarQube project properties -->
+	<property name="sonar.projectKey" value="org.sonarqube:sonarqube-scanner-ant" />
+	<property name="sonar.projectName" value="Example Basic of SonarQube Scanner for Ant Usage" />
+	<property name="sonar.projectVersion" value="1.0" />
+	<property name="sonar.sources" value="sources" />
+	<property name="sonar.java.binaries" value="bin" />
+	<property name="sonar.java.libraries" value="lib" />
+
+	<!-- Define SonarQube Scanner for Ant Target -->
+	<target name="sonar">
+	    <taskdef uri="antlib:org.sonar.ant" resource="org/sonar/ant/antlib.xml">
+		<!-- Update the following line, or put the "sonarqube-ant-task-*.jar" file in your "$HOME/.ant/lib" folder -->
+		<classpath path="/home/cgomez/Documentos/app/sonarqube/sonarqube-ant-task-2.5.jar" />
+	    </taskdef>
 	 
-	# Encoding of the source code. Default is default system encoding
-	sonar.sourceEncoding=UTF-8
+	    <!-- Execute SonarQube Scanner for Ant Analysis -->
+	    <sonar:sonar />
+	</target>
 
+	  <target name="build">
+	    <mkdir dir="bin" />
+	    <!-- esto indica que compile todo lo que haya bajo sources y ponga las clases resultantes en bin -->
+	    <javac srcdir="sources" destdir="bin" includes="**/*.java">
+	      <!-- este es un classpath de ejemplo: un directorio lib al mismo nivel que sources, incluimos todos los jars que contenga -->
+	      <classpath>
+		<fileset dir="lib" includes="*.jar" />
+	      </classpath>
+	    </javac>
+	  </target>
 
-Creamos un acceso directo llamado "main" justo en donde creamos el archivo "sonar-project.properties" del código que queremos verificar.::
+	  <target name="pack">
+	    <jar file="SaludandoMundo.jar">
+	      <!-- incluimos todas las clases bajo bin -->
+	      <fileset dir="bin" includes="**/*.class" />
+	      <!-- incluimos tambien los properties que estan directamente bajo sources (sin recursion) -->
+	      <fileset dir="sources" includes="*.properties" />
+	      <manifest>
+		<attribute name="Main-Class" value="HolaMundo" />
+	      </manifest>
+	    </jar>
+	  </target>
 
-	$ ln -s ../../fitnesse_CI_DEMO/ ./codigo                         
-	
-Se procede a ejecutar el "SonarQube Scanner for Ant 2.5".::
+	</project>
 
-	$ ./sonar-scanner
+Ahora podemos ejecutar el "ant" para que realice el analisis y lo mande al frontend sonarqube.::
+
+	$ ant sonar
+	Buildfile: /home/cgomez/Documentos/app/sonarqube/ejemplo/build.xml
+
+	sonar:
+	[sonar:sonar] Apache Ant(TM) version 1.9.9 compiled on March 1 2017
+	[sonar:sonar] SonarQube Ant Task version: 2.5
+	[sonar:sonar] Loaded from: file:/home/cgomez/Documentos/app/sonarqube/sonarqube-ant-task-2.5.jar
+	[sonar:sonar] User cache: /home/cgomez/.sonar/cache
+	[sonar:sonar] Load global settings
+	[sonar:sonar] Load global settings (done) | time=59ms
+	[sonar:sonar] User cache: /home/cgomez/.sonar/cache
+	[sonar:sonar] Load plugins index
+	[sonar:sonar] Load plugins index (done) | time=5ms
+	[sonar:sonar] Default locale: "es_VE", source code encoding: "UTF-8" (analysis is platform dependent)
+	[sonar:sonar] Process project properties
+	[sonar:sonar] Load project repositories
+	[sonar:sonar] Load project repositories (done) | time=398ms
+	[sonar:sonar] Load quality profiles
+	[sonar:sonar] Load quality profiles (done) | time=26ms
+	[sonar:sonar] Load active rules
+	[sonar:sonar] Load active rules (done) | time=932ms
+	[sonar:sonar] Load metrics repository
+	[sonar:sonar] Load metrics repository (done) | time=101ms
+	[sonar:sonar] SCM provider autodetection failed. No SCM provider claims to support this project. Please use sonar.scm.provider to define SCM of your project.
+	[sonar:sonar] Publish mode
+	[sonar:sonar] Project key: org.sonarqube:sonarqube-scanner-ant
+	[sonar:sonar] -------------  Scan Example Basic of SonarQube Scanner for Ant Usage
+	[sonar:sonar] Load server rules
+	[sonar:sonar] Load server rules (done) | time=256ms
+	[sonar:sonar] Initializer GenericCoverageSensor
+	[sonar:sonar] Initializer GenericCoverageSensor (done) | time=1ms
+	[sonar:sonar] Base dir: /home/cgomez/Documentos/app/sonarqube/ejemplo
+	[sonar:sonar] Working dir: /home/cgomez/Documentos/app/sonarqube/ejemplo/.sonar
+	[sonar:sonar] Source paths: sources
+	[sonar:sonar] Source encoding: UTF-8, default locale: es_VE
+	[sonar:sonar] Index files
+	[sonar:sonar] 2 files indexed
+	[sonar:sonar] Quality profile for java: Sonar way
+	[sonar:sonar] Sensor JavaSquidSensor [java]
+	[sonar:sonar] Configured Java source version (sonar.java.source): none
+	[sonar:sonar] JavaClasspath initialization
+	[sonar:sonar] JavaClasspath initialization (done) | time=13ms
+	[sonar:sonar] JavaTestClasspath initialization
+	[sonar:sonar] JavaTestClasspath initialization (done) | time=0ms
+	[sonar:sonar] Java Main Files AST scan
+	[sonar:sonar] 2 source files to be analyzed
+	[sonar:sonar] Java Main Files AST scan (done) | time=1005ms
+	[sonar:sonar] 2/2 source files have been analyzed
+	[sonar:sonar] Java Test Files AST scan
+	[sonar:sonar] 0 source files to be analyzed
+	[sonar:sonar] Java Test Files AST scan (done) | time=2ms
+	[sonar:sonar] Sensor JavaSquidSensor [java] (done) | time=1907ms
+	[sonar:sonar] Sensor SurefireSensor [java]
+	[sonar:sonar] parsing /home/cgomez/Documentos/app/sonarqube/ejemplo/target/surefire-reports
+	[sonar:sonar] Sensor SurefireSensor [java] (done) | time=1ms
+	[sonar:sonar] Sensor JaCoCoSensor [java]
+	[sonar:sonar] Sensor JaCoCoSensor [java] (done) | time=0ms
+	[sonar:sonar] Sensor SonarJavaXmlFileSensor [java]
+	[sonar:sonar] Sensor SonarJavaXmlFileSensor [java] (done) | time=0ms
+	[sonar:sonar] Sensor Analyzer for "php.ini" files [php]
+	[sonar:sonar] 0/0 source files have been analyzed
+	[sonar:sonar] Sensor Analyzer for "php.ini" files [php] (done) | time=3ms
+	[sonar:sonar] Sensor Zero Coverage Sensor
+	[sonar:sonar] Sensor Zero Coverage Sensor (done) | time=61ms
+	[sonar:sonar] Sensor CPD Block Indexer
+	[sonar:sonar] Sensor CPD Block Indexer (done) | time=26ms
+	[sonar:sonar] No SCM system was detected. You can use the 'sonar.scm.provider' property to explicitly specify it.
+	[sonar:sonar] 2 files had no CPD blocks
+	[sonar:sonar] Calculating CPD for 0 files
+	[sonar:sonar] CPD calculation finished
+	[sonar:sonar] Analysis report generated in 166ms, dir size=22 KB
+	[sonar:sonar] Analysis reports compressed in 42ms, zip size=8 KB
+	[sonar:sonar] Analysis report uploaded in 17ms
+	[sonar:sonar] ANALYSIS SUCCESSFUL, you can browse http://localhost:9000/dashboard/index/org.sonarqube:sonarqube-scanner-ant
+	[sonar:sonar] Note that you will be able to access the updated dashboard once the server has processed the submitted analysis report
+	[sonar:sonar] More about the report processing at http://localhost:9000/api/ce/task?id=AWSU23xuSURXzBTx_hqy
+	[sonar:sonar] Task total time: 6.078 s
+
+	BUILD SUCCESSFUL
+	Total time: 7 seconds
 
 
 Cuando culmine el análisis, nos vamos al dashboard de "SonarQube 6.4.0" en la URL http://localhost:9000 y ahi debemos ver nuestro proyecto, esto puede demorar un poco.
+
+
+Si queremos que con solo ejecutar el "ant" ejecute todo, editamos.::
+
+	  <target name="all" depends="build,pack" />
+
+	y la cambiamos por esta
+
+	  <target name="all" depends="build,pack,sonar" />
+
+Y ahora solo ejecutamos el "ant".::
+
+	$ ant
 
 
 
