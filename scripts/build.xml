@@ -1,0 +1,678 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- 
+
+==========================================================================
+Description: This ANT file is to build and deploy all Acsel-e componets
+           : directly to WebSphere Application Server without need to
+           : generate and EAR file.
+     Author: Juan Carlos Aponte (JCA)
+           : Christian Ocando
+    Changes:     
+==========================================================================
+
+-->
+
+<project name="Acsele_Default_Make" default="default" basedir="." xmlns:sonar="antlib:org.sonar.ant">
+
+<!-- Define the SonarQube global properties (the most usual way is to pass these properties via the command line) -->
+<property name="sonar.host.url" value="http://localhost:9000" />
+ 
+<!-- Define the SonarQube project properties -->
+<property name="sonar.projectKey" value="consis:Acsele_Default_Make-sonarqube-scanner-ant" />
+<property name="sonar.projectName" value="Acsele_Default_Make of SonarQube Scanner for Ant Usage" />
+<property name="sonar.projectVersion" value="1.0" />
+<property name="sonar.sources" value="build" />
+<property name="sonar.java.binaries" value="dist" />
+<property name="sonar.java.libraries" value="/home/cgomez/Documentos/app/DevTools/apache-ant-1.8.2/lib" />
+
+  <property file="./build.properties"/>
+  <property name="acsele.home"				value="${acsele.version}/Application"/>
+  <property name="client.specific.files.path"			value="${acsele.version}/ClientSpecificFiles/${client}"/>
+  <property name="client.specific.files.root"		value="${acsele.version}/ClientSpecificFiles/${client}/web"/>
+  <property name="acsele.build.main.module"		value="${dir.build}/WController.war"/>
+  <property name="acsele.build.security.module"		value="${dir.build}/Security.war"/>
+  <property name="acsele.build.transtalion.module"	value="${dir.build}/Translation.war"/>
+  <property name="acsele.build.wservices.module"	value="${dir.build}/WebServices.war"/>
+  <property name="acsele.build.custservices.module"	value="${dir.build}/CustService.war"/>
+  <property name="acsele.build.frontend.module"		value="${dir.build}/FrontEnd.war"/>
+
+  <property name="acsele.META-INF.mobile"		value="${dir.mobile}/META-INF"/>
+  <property name="acsele.build.main.module.mobile"	value="${dir.mobile}/WController.war"/>
+  <property name="acsele.build.wservices.module.mobile"	value="${dir.mobile}/WebServices.war"/>
+  <property name="acsele.build.security.module.mobile"	value="${dir.build}/Security.war"/>
+
+  <property name="acsele.main.web"			value="${acsele.home}/Web/WControllerWar/web"/>
+  <property name="acsele.security.web"			value="${acsele.home}/Web/SecurityWar/web"/>
+  <property name="acsele.transtalion.web"		value="${acsele.home}/Web/TranslationWar/web"/>
+  <property name="acsele.wservices.web"			value="${acsele.home}/Web/WebServicesWar/web"/>
+  <property name="acsele.custservices.web"		value="${acsele.home}/Web/CustServiceWar/web"/>  
+  <property name="acsele.frontend.webcontent"		value="${frontend.version}/WebContent"/>
+  <property name="acsele.main.src"			value="${acsele.home}/Core"/>
+  <property name="acsele.wservices.src"			value="${acsele.home}/Web/WebServicesWar/src"/>
+  <property name="acsele.custservices.src"		value="${acsele.home}/Web/CustServiceWar/src"/>
+  <property name="acsele.assurantcore.src"		value="${acsele.home}/Web/AssurantCore/src"/>
+  <property name="gwt.temp.dir"				value="${dir.build}/gwt_tmp_dir"/>
+  <property name="dir.splash"        			location="${acsele.version}/scm/images"/>
+  <property name="vaadin.dir"				location="${dir.build}/WController.war/WEB-INF"/>
+  <property name="acsele.build.APP-INF.module"		location="${dir.build}/WController.war/WEB-INF"/>
+
+  <taskdef resource="net/sf/antcontrib/antcontrib.properties">
+    <classpath>
+      <pathelement location="${ant.home}/lib/ant-contrib-1.0b3.jar"/>
+    </classpath>
+  </taskdef>
+
+  <target name="default" >
+    <property name="scm.deploy.arg" value="true"/>  
+    <property name="mobile.deploy.arg" value="true"/>
+    <property name="applicationcontext.deploy.arg" value="true"/>
+    <antcall target="all" />
+  </target>
+  <target name="all" depends="init,
+			delete.dir.obfuscate,
+			copy.files.needed,
+			update.sun.jaxws,
+			set.configuration,
+			compile.frontend,
+			compile.wcontroller,
+			compile.ws,
+			run.build.number,
+			run.SCM.number,
+			HTML.files,
+			call.run.gwt.compiler,
+			build.all.jar.applets,
+			GWT.jar.Needed,
+			compile.acselefront,
+			compile.vaadin.widgetsets,
+			makeMobile,
+			set.scm_configuration,
+			generate.core.lib.separated,
+			makeEar,
+			sonar,
+			makeEarObfuscate"/>
+
+
+  <target name="all2" depends="init,copy.files.needed,compile.java.sources,start.Weblogic"/>
+
+<!-- Define SonarQube Scanner for Ant Target -->
+<target name="sonar">
+    <taskdef uri="antlib:org.sonar.ant" resource="org/sonar/ant/antlib.xml">
+        <!-- Update the following line, or put the "sonarqube-ant-task-*.jar" file in your "$HOME/.ant/lib" folder -->
+        <classpath path="/home/cgomez/Documentos/app/sonarqube/sonarqube-ant-task-2.5.jar" />
+    </taskdef>
+ 
+    <!-- Execute SonarQube Scanner for Ant Analysis -->
+    <sonar:sonar />
+</target>
+
+  <target name="start.Weblogic" >
+    <exec executable="${dir.domain}/domain_7021/bin/startWebLogic.cmd"/>
+  </target>
+
+  <target name="pass.port">       
+    <copy todir="C:/Oracle/Middleware/Oracle_Home/user_projects/domains/Trunk/autodeploy" overwrite="true">
+      <fileset dir="${dir.dist}/">
+        <include name="CONSIS.ear"/>  
+      </fileset>        
+    </copy>
+  </target>
+
+  <target name="init"> 
+    <tstamp>
+      <format property="today" pattern="yyyy-MM-dd hh:mm:ss"/>
+    </tstamp>
+    <splash imageurl="file:${dir.splash}/acseleDeployCleaning.GIF" showduration="0"/>
+
+    <delete dir="${dir.build}"/>
+    <splash imageurl="file:${dir.splash}/creatingdirectories.gif" showduration="0"/>
+
+    <if>
+      <equals arg1="${mobile.deploy.arg}" arg2="${mobile.deploy}" />
+      <then>
+        <echo message="=============================================================="/>    
+        <echo message="|Acsele Mobile Deployment With ANT Build started..............."/>    
+        <echo message="|                                                              "/>    
+        <echo message="|     Ant Version: ${ant.version}"/>    
+        <echo message="|Ant Java Version: ${ant.java.version}"/>    
+        <echo message="|Ant Project name: ${ant.project.name}"/>    
+        <echo message="|    Current Date: ${today}"/>    
+        <echo message="|        Base Dir: ${basedir}"/>    
+        <echo message="|        Ant File: ${ant.file}"/>    
+        <echo message="=============================================================="/>    
+        <echo message="                                                              "/>    
+        <delete dir="${dir.build}"/>
+        <delete dir="${dir.dist}"/>
+        <mkdir dir="${dir.dist}"/>
+        <mkdir dir="${dir.build}"/>
+        <mkdir dir="${dir.build}/META-INF"/>
+        <mkdir dir="${acsele.build.main.module}"/>
+        <mkdir dir="${acsele.build.transtalion.module}"/>
+        <mkdir dir="${acsele.build.security.module}"/>
+        <mkdir dir="${acsele.build.wservices.module}"/>
+        <mkdir dir="${acsele.build.custservices.module}"/>
+        <mkdir dir="${acsele.build.frontend.module}"/>
+
+        <mkdir dir="${acsele.META-INF.mobile}"/>
+        <mkdir dir="${acsele.build.main.module.mobile}"/>
+        <mkdir dir="${acsele.build.security.module.mobile}"/>
+        <mkdir dir="${acsele.build.wservices.module.mobile}"/>
+
+        <mkdir dir="${acsele.build.main.module}/UAAWebClient/images"/>
+      </then>
+      <else>
+        <echo message="=============================================================="/>    
+        <echo message="|Acsele Deployment With ANT Build started..."/>    
+        <echo message="|                                                              "/>    
+        <echo message="|     Ant Version: ${ant.version}"/>    
+        <echo message="|Ant Java Version: ${ant.java.version}"/>    
+        <echo message="|Ant Project name: ${ant.project.name}"/>    
+        <echo message="|    Current Date: ${today}"/>    
+        <echo message="|        Base Dir: ${basedir}"/>    
+        <echo message="|        Ant File: ${ant.file}"/>    
+        <echo message="=============================================================="/>    
+        <echo message="                                                              "/>    
+
+        <delete dir="${dir.build}"/>
+        <delete dir="${dir.dist}"/>
+        <mkdir dir="${dir.build}"/>
+        <mkdir dir="${dir.build}/META-INF"/>
+        <mkdir dir="${dir.dist}"/>
+        <mkdir dir="${gwt.temp.dir}"/>
+        <mkdir dir="${acsele.build.main.module}"/>
+        <mkdir dir="${acsele.build.transtalion.module}"/>
+        <mkdir dir="${acsele.build.security.module}"/>
+        <mkdir dir="${acsele.build.wservices.module}"/>
+        <mkdir dir="${acsele.build.custservices.module}"/>
+        <mkdir dir="${acsele.build.frontend.module}"/>
+      </else>
+    </if>  
+  </target>
+
+
+
+  <target name="copy.files.needed" depends="update.enviroment" >
+    <splash imageurl="file:${dir.splash}/copingfiles.gif" showduration="0"/>
+
+    <echo message="Starting coping files needed... ${today}"/>
+
+    <!-- Coping META-INF Directory -->
+    <copy todir="${dir.build}/META-INF" overwrite="true">
+      <fileset dir="${acsele.home}/Web/META-INF">
+        <exclude name="application.xml.ant.template"/>            
+        <exclude name="weblogic-application.xml.ant.template"/>
+        <exclude name="application.xml"/>
+        <exclude name="weblogic-application.xml"/>
+      </fileset>        
+    </copy>
+
+    <copy todir="${acsele.build.main.module}" overwrite="true">
+      <fileset dir="${acsele.main.web}">
+        <exclude name="WEB-INF/classes/com/**/**"/>
+      </fileset>
+    </copy>
+
+    <copy todir="${acsele.build.transtalion.module}" overwrite="true">
+      <fileset dir="${acsele.transtalion.web}">
+        <exclude name="WEB-INF/classes/com/**/**"/>
+      </fileset>
+    </copy>
+
+    <copy todir="${acsele.build.security.module}" overwrite="true">
+      <fileset dir="${acsele.security.web}">
+        <exclude name="WEB-INF/classes/com/**/**"/>
+      </fileset>
+    </copy>
+    <copy todir="${acsele.build.wservices.module}" overwrite="true">
+      <fileset dir="${acsele.wservices.web}">
+        <exclude name="WEB-INF/classes/com/**/**"/>
+      </fileset>
+    </copy>
+    <copy todir="${acsele.build.custservices.module}" overwrite="true">
+      <fileset dir="${acsele.custservices.web}">
+        <exclude name="WEB-INF/classes/com/**/**"/>
+      </fileset>
+    </copy>        
+
+    <copy todir="${acsele.build.frontend.module}" overwrite="true">
+      <fileset dir="${acsele.frontend.webcontent}">
+        <exclude name="WEB-INF/classes/com/**/**"/>
+      </fileset>
+    </copy>        
+
+
+    <!-- Coping Client Specific files -->
+
+
+
+
+    <!-- Coping resources files-->
+    <copy todir="${acsele.build.main.module}/WEB-INF/classes" overwrite="true">
+      <fileset dir="${acsele.main.src}/resources">
+        <exclude name="**/MX.xml"/>
+        <include name="**/**"/>
+      </fileset>
+    </copy>
+
+
+    <!-- Coping CORE lib-->
+    <copy todir="${acsele.build.main.module}/WEB-INF/lib" overwrite="true">
+      <fileset dir="${acsele.main.src}/lib">
+        <include name="**/**"/>
+      </fileset>
+    </copy>
+
+    <copy todir="${acsele.build.main.module}" overwrite="true">
+      <fileset dir="${client.specific.files.root}/WControllerWar/web">
+        <exclude name="**/DK.xml"/>
+        <exclude name="**/ES.xml"/>
+        <exclude name="**/IT.xml"/>
+        <exclude name="**/UK.xml"/>
+        <exclude name="**/DE.xml"/>
+        <exclude name="**/AR.xml"/>
+        <exclude name="**/BR.xml"/>
+        <exclude name="**/CA.xml"/>
+        <exclude name="**/VE.xml"/>
+        <exclude name="**/PA.xml"/>
+        <exclude name="**/MX.xml"/>
+        <exclude name="**/BO.xml"/>
+      </fileset>
+    </copy>
+
+    <!--<copy file="${client.specific.files.root}/WControllerWar/web/WEB-INF/classes/config/hibernateMappingCustom.xml" todir="${acsele.build.main.module}/WEB-INF/classes/config" overwrite="true" failonerror="false"/>-->
+    <if>
+      <available file="${client.specific.files.path}/core/resources/config" type="dir"/>
+      <then>
+        <copy todir="${acsele.build.APP-INF.module}/classes/config" overwrite="true">
+          <fileset dir="${client.specific.files.path}/core/resources/config">
+            <include name="**/**"/>
+          </fileset>
+        </copy>
+      </then>
+    </if>
+  </target>
+
+  <target name="compile.acselefront">
+    <tstamp/>
+    <echo message="compiling Acsele Front widgetsets..."/>
+    <splash imageurl="file:${dir.splash}/acseleDeployCompiling.GIF" showduration="0"/>
+    <ant antfile="${basedir}\..\..\buildAcseleFront.xml" target="compile-widgetset"/>
+  </target>
+
+
+
+
+
+  <target name="update.enviroment">
+    <if>
+      <equals arg1="${mobile.deploy.arg}" arg2="${mobile.deploy}" />
+      <then>
+        <echo message="updatating Enviroment properties on files for mobile"/>
+        <ant antfile="${basedir}\..\..\UpdateAcseleEnv.xml" dir="${basedir}" target="update.acsele.templates.mobile"/>
+      </then>
+      <else>
+        <echo message="updatating Enviroment properties on files "/>
+        <ant antfile="${basedir}\..\..\UpdateAcseleEnv.xml" dir="${basedir}"/>
+      </else>
+    </if>   
+  </target>
+
+
+
+
+  <target name="compile.java.sources">
+    <tstamp/>
+    <echo message="compiling Java Sources..."/>
+    <splash imageurl="file:${dir.splash}/acseleDeployCompiling.GIF" showduration="0"/>
+    <ant antfile="${basedir}\..\..\compiling-javaSources.xml" target="compile.java.sources.needed.by.mobile.backend"/>
+  </target>
+
+  <target name="compile.frontend">
+
+    <echo message="compiling Java Sources..."/>
+    <splash imageurl="file:${dir.splash}/acseleDeployCompiling.GIF" showduration="0"/>
+    <ant antfile="${basedir}\..\..\compiling-javaSources.xml" target="compile.frontend"/>
+
+  </target>
+
+
+  <target name="compile.ws">
+    <echo message="compiling Java Sources..."/>
+    <splash imageurl="file:${dir.splash}/acseleDeployCompiling.GIF" showduration="0"/>
+    <ant antfile="${basedir}\..\..\compiling-javaSources.xml" target="compile.ws"/>
+    <echo message="Compiling frontend Sources Finished...Time ${compile.frontend.end.time}"/>
+  </target> 
+
+
+
+
+  <target name="build.all.jar.applets" >
+    <echo message="Building all applets jars..."/>
+    <ant antfile="${basedir}\..\..\buildAllJarForApplets.xml" />
+
+  </target>
+
+
+
+  <target name="call.run.gwt.compiler">
+
+    <echo message="Starting... Compiling gwt Sources..."/>
+    <splash imageurl="file:${dir.splash}/acseleDeployCompiling.GIF" showduration="0"/>
+    <ant antfile="${basedir}\..\..\compiling-javaSources.xml" target="run.gwt.compiler"/>
+    <echo message="Compiling gwt Sources Finished..."/>
+
+  </target>
+
+
+  <target name="makeWar">
+    <if>
+      <equals arg1="${mobile.deploy.arg}" arg2="${mobile.deploy}" />
+      <then>
+        <echo message="Building all Acsele mobile Backend modules (war files)..."/>
+        <ant antfile="${basedir}\..\..\make_war_file.xml" dir="${basedir}" target="make.mobile.war.files"/>
+      </then>
+      <else>
+        <echo message="Building all Acsele modules (war files)..."/>
+        <ant antfile="${basedir}\..\..\make_war_file.xml" dir="${basedir}"/>
+      </else>
+    </if>
+  </target>   
+
+	<target name="generate.core.lib.separated">
+		<if>
+			<equals arg1="${core.lib.separated.enabled}" arg2="true" />
+			<then>
+				<tstamp>
+					<format property="today" pattern="yyyy-MM-dd hh:mm:ss"/>
+				</tstamp>
+				<echo message="Generating Core Lib Separated - ${today}"/>
+
+				<delete dir="${core.lib.separated.dir}"/>
+				<mkdir dir="${core.lib.separated.dir}"/>
+
+				<copy todir="${core.lib.separated.dir}">
+					<fileset dir="${acsele.main.src}/lib">
+						<exclude name="**/ESAPI*.jar"/>
+						<exclude name="**/javax.ws.rs-api*.jar"/>
+					</fileset>
+				</copy>
+
+				<echo message="Generating Core Lib Separated ZIP file"/>
+				<zip destfile="${dir.dist}/core-lib.zip"
+					   basedir="${core.lib.separated.dir}"
+				/>
+
+				<echo message="Cleaning WController Lib"/>
+				<delete dir="${acsele.build.main.module}/WEB-INF/lib"/>
+				<mkdir dir="${acsele.build.main.module}/WEB-INF/lib"/>
+				
+				<copy todir="${acsele.build.main.module}/WEB-INF/lib" overwrite="true">
+					<fileset dir="${acsele.main.web}/WEB-INF/lib">
+						<include name="**/**"/>
+					</fileset>
+				</copy>
+				<copy todir="${acsele.build.main.module}/WEB-INF/lib">
+					<fileset dir="${acsele.main.src}/lib">
+						<include name="**/ESAPI*.jar"/>
+						<include name="**/javax.ws.rs-api*.jar"/>
+					</fileset>
+				</copy>
+				<copy todir="${acsele.build.main.module}/WEB-INF/lib" overwrite="true">
+					<fileset dir="${client.specific.files.root}/WControllerWar/web/WEB-INF/lib">
+						<include name="**/**"/>
+					</fileset>
+				</copy>
+
+			</then>
+		</if>
+	</target>
+
+  <target name="makeEar" depends="makeWar">
+    <if>
+      <equals arg1="${mobile.deploy.arg}" arg2="${mobile.deploy}" />
+      <then>
+        <echo message="Creating the EAR file for mobile Backend..."/>
+        <ear earfile="${dir.dist}/CONSIS.ear" appxml="${dir.build}/META-INF/application.xml" manifest="${dir.build}/META-INF/MANIFEST.MF">
+          <exclude name="**//.svn"/>
+          <fileset dir="${dir.dist}" includes="WController.war"/>
+          <fileset dir="${dir.dist}" includes="Security.war"/>
+          <fileset dir="${dir.dist}" includes="WebServices.war"/>
+          <fileset dir="${dir.build}" includes="META-INF/weblogic-application.xml"/>
+        </ear>
+      </then>
+      <else> 
+        <echo message="Creating the EAR file..."/>
+        <ear earfile="${dir.dist}/CONSIS.ear" appxml="${dir.build}/META-INF/application.xml" manifest="${dir.build}/META-INF/MANIFEST.MF">
+          <exclude name="**//.svn"/>
+          <fileset dir="${dir.dist}" includes="WController.war"/>
+          <fileset dir="${dir.dist}" includes="Translation.war"/>
+          <fileset dir="${dir.dist}" includes="Security.war"/>
+          <fileset dir="${dir.dist}" includes="WebServices.war"/>
+          <fileset dir="${dir.dist}" includes="CustService.war"/>
+          <fileset dir="${dir.dist}" includes="FrontEnd.war"/>
+          <fileset dir="${dir.build}" includes="META-INF/weblogic-application.xml"/>
+
+        </ear>
+      </else>
+    </if>
+
+  </target>
+
+  <target name="delete.dir.obfuscate">
+    <echo message="Deleting the Obfuscate Dir..."/>
+    <ant antfile="${basedir}\..\..\make_obfuscate_ear_file.xml" dir="${basedir}" target="delete.file.proguard.log"/>
+    <ant antfile="${basedir}\..\..\make_obfuscate_ear_file.xml" dir="${basedir}" target="delete.dir.build.obfuscate"/>           
+    <ant antfile="${basedir}\..\..\make_obfuscate_ear_file.xml" dir="${basedir}" target="delete.dir.dist.obfuscate"/>
+  </target> 
+
+  <target name="makeEarObfuscate">
+	<if>
+		<equals arg1="${makeEarObfuscate.enabled}" arg2="true" />
+		<then>
+			<echo message="Creating the Obfuscate EAR file..."/>
+			<ant antfile="${basedir}\..\..\make_obfuscate_ear_file.xml" dir="${basedir}"/>           
+		</then>
+		<else>
+                        <echo message="Obfuscate EAR file Disble..."/>
+		</else>
+	</if>
+  </target> 
+
+
+  <target name="makeMobile">
+    <if>
+      <equals arg1="${mobile.deploy.arg}" arg2="${mobile.deploy}" />
+      <then>
+        <echo message="Creating the EAR file for mobile Backend..."/>
+        <copy todir="${dir.mobile}/WController.war" overwrite="true">
+          <fileset dir="${dir.build}/WController.war" includes="**/**"/>
+        </copy>
+
+        <copy todir="${dir.mobile}/WebServices.war" overwrite="true">
+          <fileset dir="${dir.build}/WebServices.war" includes="**/**"/>
+        </copy>
+
+        <copy todir="${dir.mobile}/Security.war" overwrite="true">
+          <fileset dir="${dir.build}/Security.war" includes="**/**"/>
+        </copy>
+        <copy todir="${dir.mobile}/META-INF" overwrite="true">
+          <fileset dir="${dir.build}/META-INF" includes="**/**"/>
+        </copy>
+      </then>
+      <else> 
+      </else>
+    </if>
+  </target>
+
+  <target name="HTML.files" description="Coping HTML files needed">
+    <echo message="Coping HTML files"/>
+    <copy todir="${acsele.build.main.module}/WEB-INF/classes/com/assurant/celita/framework/control" overwrite="true">
+      <fileset dir="${acsele.custservices.src}/com/assurant/celita/framework/control">
+        <include name="**/*.htm"/>
+        <exclude name="**/_svn"/>
+        <exclude name="**/_svn/**"/>
+      </fileset> 
+    </copy>
+  </target>
+
+  <target name="compile.wcontroller">
+
+    <if>
+      <equals arg1="${mobile.deploy.arg}" arg2="${mobile.deploy}" />
+      <then>
+        <echo message="Init Compiling Javasources needed by Mobile Acsel-e Backend "/>
+        <antcall target="compile.java.sources" />
+        <echo message="End Compiling Javasources needed by Mobile Acsel-e Backend "/>
+      </then>
+      <else>
+        <echo message="compiling Java Sources..."/>
+        <splash imageurl="file:${dir.splash}/acseleDeployCompiling.GIF" showduration="0"/>
+        <ant antfile="${basedir}\..\..\compiling-javaSources.xml" target="compile.wcontroller"/>
+      </else>
+    </if> 
+    <echo message="Compiling wcontroller Sources Finished...Time ${compile.frontend.end.time}"/>
+  </target>
+
+ <!--
+
+  <target name="run.build.number" >
+    <exec executable="${dir.SubRev.profile}/bin/SubWCRev.exe">
+      <arg line="${acsele.version}"/>
+      <arg line=".\build.number"/>
+      <arg line="${dir.build}\WController.war\WEB-INF\classes\buildNumber.properties"/>
+    </exec>
+  </target> 
+
+-->
+
+<!-- ======================================================================== 
+        <target name="run.build.number.windows" >
+                <echo message="Generating Build SVN Info In Windows"/>
+                <exec executable="${dir.SubRev.profile}/bin/SubWCRev.exe">
+                        <arg line="${acsele.version}"/>
+                        <arg line=".\build.number"/>
+                        <arg line="${dir.build}\WController.war\WEB-INF\classes\buildNumber.properties"/>
+                </exec>
+        </target>
+
+        <target name="run.build.number.linux" >
+                <echo message="Generating Build SVN Info In Linux"/>
+                <exec executable="./generate-build-number.sh" outputproperty="svnversion">
+                        <arg line="${acsele.version}"/>
+                </exec>
+                <exec executable="./generate-revision-date.sh" outputproperty="svndate">
+                        <arg line="${acsele.version}"/>
+                </exec>
+                <copy file="./buildNumber.linux" tofile="${dir.build}/WController.war/WEB-INF/classes/buildNumber.properties" overwrite="true"/>
+                <replace file="${dir.build}\WController.war\WEB-INF\classes\buildNumber.properties" token="$buildNumber$" value="${svnversion}"/>
+                <replace file="${dir.build}\WController.war\WEB-INF\classes\buildNumber.properties" token="$date$" value="${svndate}"/>
+                <replace file="${dir.build}\WController.war\WEB-INF\classes\buildNumber.properties" token="$version$" value="${acsele.version}"/>
+        </target>
+
+ ======================================================================== -->
+
+
+  <target name="compile.vaadin.widgetsets">
+    <tstamp/>
+    <echo message="compiling Vaadin widgetsets..."/>
+    <splash imageurl="file:${dir.splash}/acseleDeployCompiling.GIF" showduration="0"/>
+    <ant antfile="${basedir}\..\..\build-widgetset.xml" target="compile-widgetset"/>
+  </target>
+
+  <target name="GWT.jar.Needed" description="Coping jar files into GWT directories">
+
+    <echo message="Coping jar files into GWT directories"/>
+    <copy todir="${acsele.build.main.module}/product/producttool" overwrite="true">  
+      <fileset dir="${acsele.build.main.module}/EJBAcsel-e/jsp">
+        <include name="**/*.jar"/>
+        <exclude name="**/AppletBusinessRuleEditor.jar"/>
+        <exclude name="**/AppletEntryTool.jar"/>
+        <exclude name="**/AppletPrintBatchEditor.jar"/>
+        <exclude name="**/AppletProductTool.jar"/>
+        <exclude name="**/AppletTemplateTool.jar"/>
+      </fileset> 
+    </copy>
+
+  </target>
+
+  <target name="run.schema.tool">
+
+    <ant antfile="${basedir}\..\..\schema-tool.xml" dir="${acsele.build.main.module}/WEB-INF"/>
+
+  </target>
+
+  <target name="run.SCM.number" >
+	<condition property="isLinux">
+                  <os family="unix" />
+        </condition>
+        <if>
+            <equals arg1="${isLinux}" arg2="true" />
+        <then>
+          <echo message="No se ejecuta tarea SCM.Number.properties files por compilacion en Linux"/>
+        </then>
+      <else>
+       	  <echo message="SCM.Number.properties files"/>
+       	  <exec executable="${dir.SubRev.profile}/bin/SubWCRev.exe">
+            <arg line="${acsele.version}"/>
+            <arg line=".\SCM.number"/>
+            <arg line="${dir.build}\WController.war\WEB-INF\classes\SCM.Number.properties"/>
+          </exec>
+      </else>
+    </if>   
+  </target> 
+  
+  <target name="update.sun.jaxws">
+    <if>
+      <available file="${client.specific.files.root}/WControllerWar/web/WEB-INF/sun-jaxws.xml" />
+      <then>
+        <merge tofile="${acsele.build.wservices.module}/WEB-INF/sun-jaxws.xml">
+          <sourcefiles>
+            <fileset file="${acsele.wservices.web}/WEB-INF/sun-jaxwsHeader.xml" />
+            <fileset file="${acsele.wservices.web}/WEB-INF/sun-jaxws.xml" />
+            <fileset file="${client.specific.files.root}/WControllerWar/web/WEB-INF/sun-jaxws.xml" />
+            <fileset file="${acsele.wservices.web}/WEB-INF/sun-jaxwsFooter.xml" />
+          </sourcefiles>
+        </merge>
+      </then>
+      <else>
+        <merge tofile="${acsele.build.wservices.module}/WEB-INF/sun-jaxws.xml">
+          <sourcefiles>
+            <fileset file="${acsele.wservices.web}/WEB-INF/sun-jaxwsHeader.xml" />
+            <fileset file="${acsele.wservices.web}/WEB-INF/sun-jaxws.xml" />
+            <fileset file="${acsele.wservices.web}/WEB-INF/sun-jaxwsFooter.xml" />
+          </sourcefiles>
+        </merge>
+      </else>
+    </if>
+  </target>
+
+  <macrodef name="merge">
+    <attribute name="tofile"/>
+    <element name="sourcefiles"/>
+
+    <sequential>
+      <tempfile property="temp.file" prefix="ant.merge." deleteonexit="true"/>
+      <concat destfile="${temp.file}">
+        <sourcefiles/>
+      </concat>
+      <copy file="${temp.file}" tofile="@{tofile}" overwrite="true" failonerror="false">        
+      </copy>
+    </sequential>
+  </macrodef>
+	<target name="set.configuration">
+			<tstamp/>
+			 <echo message="Setting Configuration"/>
+			<ant antfile="${basedir}\..\..\set-configuration.xml" target="set.configuration"/>
+	</target>
+
+	<target name="set.scm_configuration">
+                <tstamp/>
+                 <echo message="SCM Setting Configuration"/>
+                <ant antfile="${basedir}\configuracion_unica.xml" target="set.scm_configuration"/>
+	</target>
+	
+ <target name="run.build.number">
+  <property name="acsele.buildnumber.location" value="${dir.build}/WController.war/WEB-INF/classes"/>
+  <ant antfile="${basedir}/../../generate-build-info/generate-build-info.xml" target="generate.build.info"/>
+ </target>
+</project>
